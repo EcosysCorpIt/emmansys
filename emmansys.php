@@ -26,7 +26,7 @@ final class Employee_Management_System {
      *
      * @var string
      */
-    const VERSION = '1.1.0'; // Updated version
+    const VERSION = '1.1.0'; 
 
     /**
      * The single instance of the class.
@@ -353,7 +353,6 @@ final class Employee_Management_System {
         $columns['ems_leave_employee'] = 'ems_leave_employee_sort';
         $columns['ems_leave_user'] = 'ems_leave_user_sort';
         $columns['ems_leave_type'] = 'ems_leave_type_sort';
-        // Duration column is not easily sortable by meta_key if values are 'whole_day', 'half_day_am' etc.
         $columns['ems_leave_status'] = 'ems_leave_status_sort';
         return $columns;
     }
@@ -438,7 +437,7 @@ final class Employee_Management_System {
         $leave_type = isset( $_POST['ems_profile_leave_type'] ) ? sanitize_key( $_POST['ems_profile_leave_type'] ) : '';
         $start_date_val = isset( $_POST['ems_profile_start_date'] ) ? sanitize_text_field( $_POST['ems_profile_start_date'] ) : '';
         $end_date_val = isset( $_POST['ems_profile_end_date'] ) ? sanitize_text_field( $_POST['ems_profile_end_date'] ) : '';
-        $leave_duration_val = isset( $_POST['ems_profile_leave_duration'] ) ? sanitize_key( $_POST['ems_profile_leave_duration'] ) : 'whole_day'; // Default to whole_day
+        $leave_duration_val = isset( $_POST['ems_profile_leave_duration'] ) ? sanitize_key( $_POST['ems_profile_leave_duration'] ) : 'whole_day'; 
         $leave_reason = isset( $_POST['ems_profile_leave_reason_field'] ) ? sanitize_textarea_field( $_POST['ems_profile_leave_reason_field'] ) : '';
         $today_val = current_time('Y-m-d');
 
@@ -483,3 +482,77 @@ function run_employee_management_system() {
 }
 run_employee_management_system();
 
+/**
+ * =====================================================================================
+ * UPDATE HISTORY:
+ * =====================================================================================
+ *
+ * Version 1.1.0 (Current - As of this generation)
+ * - Added "Leave Duration" (Whole Day, Half Day AM/PM) option to Leave Request forms (admin and profile).
+ * - Updated meta box, save functions, and display columns/history to include duration.
+ * - Added client-side and server-side date validation for Start Date and End Date.
+ * - Start Date cannot be in the past.
+ * - End Date cannot be earlier than Start Date.
+ * - Enqueued JavaScript for date validation.
+ *
+ * Version 1.0.9
+ * - Added dependency on "User Role Editor" plugin.
+ * - Removed internal role/capability creation. Plugin now relies on admin to set up
+ * roles (e.g., ems_employee, ems_manager) and assign capabilities using User Role Editor.
+ * - CPTs still define their necessary capabilities, which are then managed externally.
+ * - Added admin notice if "User Role Editor" is not active.
+ *
+ * Version 1.0.8
+ * - Introduced Role Management module.
+ * - Defined custom roles: `ems_employee` and `ems_manager`.
+ * - Assigned specific capabilities for Employee and Leave Request CPTs.
+ * - Integrated `current_user_can()` checks for CPT access and actions.
+ * - Roles and capabilities added on activation, removed on deactivation.
+ * - Corrected admin column display bug for Employees list (header duplication).
+ *
+ * Version 1.0.7
+ * - Removed standard "Title" field and main "Visual Editor" from Employee CPT edit screen.
+ * - Added "Employee Full Name" meta field, used to programmatically set post_title.
+ * - Removed standard "Title" field and main "Visual Editor" from Leave Request CPT edit screen.
+ * - Title for Leave Requests is auto-generated.
+ * - Added "Reason for Leave" textarea meta field.
+ * - Conditional display of "Employee" dropdown in Leave Request meta box:
+ * - Administrators/Managers see dropdown.
+ * - Other users see their linked employee details as read-only.
+ *
+ * Version 1.0.6
+ * - Prefixed custom admin column keys with `ems_` to prevent conflicts and fix header duplication.
+ *
+ * Version 1.0.5
+ * - Changed "Employee Name" field in Leave Request meta box to a dropdown populated from Employee CPT.
+ * - Auto-populates Employee Name and linked WP User ID on leave request based on selection.
+ * - Leave submission from profile page now requires user to be linked to an Employee CPT record.
+ *
+ * Version 1.0.4
+ * - Added "Linked WordPress User" dropdown to Employee CPT meta box.
+ * - Employee records can now be directly tagged to a WordPress user account.
+ * - Displayed linked user in the "All Employees" admin list.
+ *
+ * Version 1.0.3
+ * - Added "File a Leave" functionality to the user's WordPress profile page.
+ * - Users can submit leave requests from their profile.
+ * - Users can view their leave request history on their profile.
+ * - Leave Request CPT now stores `_leave_user_id`.
+ *
+ * Version 1.0.2
+ * - Added "File for Leave" module (Leave Request Custom Post Type).
+ * - Meta fields for Leave Type, Start Date, End Date, Reason, Status, Admin Notes.
+ * - Custom admin columns for Leave Requests.
+ *
+ * Version 1.0.1
+ * - Updated plugin Text Domain to `emmansys` for consistency.
+ *
+ * Version 1.0.0
+ * - Initial plugin setup.
+ * - Created "Employee" Custom Post Type (CPT).
+ * - Meta fields for Employee ID, Department, Position, Email, Phone, Salary.
+ * - Custom admin columns for Employee CPT.
+ * - Basic `[list_employees]` shortcode.
+ *
+ * =====================================================================================
+ */
