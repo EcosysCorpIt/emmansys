@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EmManSys
  * Description:       A simple plugin to create, edit, delete, and list employees and manage leave requests. Requires User Role Editor plugin.
- * Version:           1.2.1
+ * Version:           1.2.2
  * Author:            Your Name
  * Author URI:        https://example.com/
  * License:           GPL v2 or later
@@ -26,7 +26,7 @@ final class Employee_Management_System {
      *
      * @var string
      */
-    const VERSION = '1.2.1'; // Updated version
+    const VERSION = '1.2.2'; // Updated version
 
     /**
      * The single instance of the class.
@@ -42,10 +42,16 @@ final class Employee_Management_System {
     private $dependency_met = false;
 
     /**
-     * Hook suffix for the dashboard page.
+     * Hook suffix for the employee dashboard page.
      * @var string
      */
-    public $dashboard_page_hook_suffix = '';
+    public $employee_dashboard_page_hook_suffix = '';
+
+    /**
+     * Hook suffix for the manager dashboard page.
+     * @var string
+     */
+    public $manager_dashboard_page_hook_suffix = '';
 
     /**
      * Hook suffix for the leave types page.
@@ -101,7 +107,6 @@ final class Employee_Management_System {
 
     /**
      * Check for required plugin dependencies.
-     * This is hooked to admin_init by init_plugin_if_dependency_met if needed.
      */
     public function check_dependencies_and_notify() {
         if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -119,7 +124,7 @@ final class Employee_Management_System {
      * Display admin notice if dependency is missing.
      */
     public function dependency_missing_notice() {
-         if ( !$this->dependency_met ) { // Re-check just in case
+         if ( !$this->dependency_met ) { 
             ?>
             <div class="notice notice-error is-dismissible">
                 <p>
@@ -155,7 +160,7 @@ final class Employee_Management_System {
      * Setup handler classes.
      */
     private function setup_handlers() {
-        $this->leave_options     = new EMS_Leave_Options(); // Though mostly used statically
+        $this->leave_options     = new EMS_Leave_Options();
         $this->assets            = new EMS_Assets($this);
         $this->user_profile      = new EMS_User_Profile();
         $this->admin_menus       = new EMS_Admin_Menus($this, $this->user_profile);
@@ -197,7 +202,7 @@ final class Employee_Management_System {
         // Admin Menu & Pages
         add_action( 'admin_menu', array( $this->admin_menus, 'add_admin_menus' ) );
         add_action( 'admin_head', array( $this->admin_menus, 'hide_leave_request_add_new_button_css' ) ); 
-        add_action( 'admin_menu', array( $this->admin_menus, 'remove_default_add_new_submenu' ), 999 ); // Remove default "Add New" submenu
+        add_action( 'admin_menu', array( $this->admin_menus, 'remove_default_add_new_submenu' ), 999 );
 
         // CPT Registration and Management
         add_action( 'init', array( $this->employee_cpt, 'register_employee_cpt' ) );
@@ -295,17 +300,20 @@ run_employee_management_system();
  * =====================================================================================
  * UPDATE HISTORY:
  * =====================================================================================
- * Version 1.2.1 (Current - Remove Default "Add New" Submenu for Leave Requests)
+ * Version 1.2.2 (Current - Add Manager Dashboard)
+ * - Added `manager_dashboard_page_hook_suffix` property to the main plugin class.
+ * - Modified `EMS_Admin_Menus` class:
+ * - `add_admin_menus` now includes logic to add a top-level "Manager Dashboard" if the user
+ * has `approve_leave_requests` capability.
+ * - Added `render_manager_dashboard_page` method to display stats (pending leaves, total employees),
+ * quick action links, and a list of recent pending leave requests.
+ * - Incremented plugin version to 1.2.2.
+ * * Version 1.2.1
  * - Added `remove_default_add_new_submenu` method to `EMS_Admin_Menus` class.
  * - This method uses `remove_submenu_page()` to hide the default "Add New" submenu item
  * for the "Leave Request" CPT, as the plugin uses a custom page for this.
  * - Hooked this new method to `admin_menu` with a late priority (999) in `emmansys.php`.
  * - Incremented plugin version to 1.2.1.
- *
- * Version 1.2.0 
- * - Refactored the main plugin class `Employee_Management_System` into multiple smaller classes
- * for better organization and maintainability.
- * - Incremented plugin version to 1.2.0.
  *
  * (Older versions summarized for brevity)
  * =====================================================================================
