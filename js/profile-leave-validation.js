@@ -4,76 +4,118 @@ jQuery(document).ready(function($) {
     var nonce = ems_profile_leave_data.nonce;
     var ajax_action = ems_profile_leave_data.action;
 
-    // --- Existing date validation logic from your previous JS file ---
-    var profileStartDate = '#ems_profile_start_date';
-    var profileEndDate = '#ems_profile_end_date';
+    // Determine the current form context (profile or dashboard)
+    var $currentForm = null;
+    if ($(ems_profile_leave_data.form_id_profile).length) {
+        $currentForm = $(ems_profile_leave_data.form_id_profile);
+    } else if ($(ems_profile_leave_data.form_id_dashboard).length) {
+        $currentForm = $(ems_profile_leave_data.form_id_dashboard);
+    }
+
+    if (!$currentForm) {
+        // console.error("EmManSys: Could not find profile or dashboard leave form.");
+        return; // Exit if form not found
+    }
+
+    var $profileStartDate = $currentForm.find('.ems-leave-start-date'); // Use class selector
+    var $profileEndDate = $currentForm.find('.ems-leave-end-date');   // Use class selector
 
     function validateProfileLeaveDates() {
-        var startDate = $(profileStartDate).val();
-        var endDate = $(profileEndDate).val();
+        var startDate = $profileStartDate.val(); // Should be YYYY-MM-DD
+        var endDate = $profileEndDate.val();     // Should be YYYY-MM-DD
 
-        if (!$(profileStartDate).attr('min')) {
-            $(profileStartDate).attr('min', today);
+        // Set min attribute for start date to today
+        if (!$profileStartDate.attr('min') || $profileStartDate.attr('min') < today) {
+            $profileStartDate.attr('min', today);
         }
-        if (startDate) {
-            $(profileEndDate).attr('min', startDate);
-            if (endDate && endDate < startDate) {
-                $(profileEndDate).val('');
+         // If jQuery UI Datepicker is attached to start date, update its minDate
+        if ($.fn.datepicker && $profileStartDate.hasClass('hasDatepicker')) {
+            try {
+                $profileStartDate.datepicker("option", "minDate", today);
+            } catch (e) {
+                // console.warn("EmManSys: Error setting minDate on start datepicker.", e);
             }
-        } else {
-             $(profileEndDate).attr('min', today);
         }
+
+        // If start date is in the past (e.g. due to browser autofill or if min attribute failed), reset it
         if (startDate && startDate < today) {
-            $(profileStartDate).val(today);
+            $profileStartDate.val(today);
+            startDate = today; // Update for subsequent logic
+        }
+        
+        // Set min attribute for end date based on start date or today
+        var minEndDate = startDate ? startDate : today;
+        $profileEndDate.attr('min', minEndDate);
+
+        // If jQuery UI Datepicker is attached to end date, update its minDate
+        if ($.fn.datepicker && $profileEndDate.hasClass('hasDatepicker')) {
+             try {
+                $profileEndDate.datepicker("option", "minDate", minEndDate);
+            } catch (e) {
+                // console.warn("EmManSys: Error setting minDate on end datepicker.", e);
+            }
+        }
+
+        // If end date is already set and is before new start date (or today if start date is empty), clear/reset it
+        if (endDate && endDate < minEndDate) {
+            $profileEndDate.val(minEndDate); // Or $profileEndDate.val(''); to clear
         }
     }
 
-    if ($(profileStartDate).length && $(profileEndDate).length) {
-        validateProfileLeaveDates();
-        $(profileStartDate).on('change', validateProfileLeaveDates);
-        $(profileEndDate).on('change', function() {
-            var startDateVal = $(profileStartDate).val();
+    if ($profileStartDate.length && $profileEndDate.length) {
+        validateProfileLeaveDates(); // Initial validation
+
+        $profileStartDate.on('change input', function() { // Use 'input' for immediate feedback on some browsers
+            validateProfileLeaveDates();
+        });
+
+        $profileEndDate.on('change input', function() {
+            // Simple re-check: if end date is before start date after change
+            var startDateVal = $profileStartDate.val();
             var endDateVal = $(this).val();
             if (startDateVal && endDateVal && endDateVal < startDateVal) {
-                $(this).val(startDateVal);
+                $(this).val(startDateVal); // Reset to start date, or clear
             }
         });
     }
-    // --- End of existing date validation logic ---
 
-    $('#ems-profile-leave-form').on('submit', function(e) {
-        e.preventDefault(); // Prevent traditional form submission
+    $currentForm.on('submit', function(e) {
+        e.preventDefault(); 
+
+        // Re-target within the current form for safety, using classes
+        var $form = $(this);
+        var startDate = $form.find('.ems-leave-start-date').val();
+        var endDate = $form.find('.ems-leave-end-date').val();
+        var leaveType = $form.find('select[name="ems_profile_leave_type"]').val();
+        var leaveDuration = $form.find('select[name="ems_profile_leave_duration"]').val();
+        var leaveReason = $form.find('textarea[name="ems_profile_leave_reason_field"]').val();
 
         // Client-side validation (re-check before AJAX)
-        var startDate = $(profileStartDate).val();
-        var endDate = $(profileEndDate).val();
-        var leaveType = $('#ems_profile_leave_type').val();
-        var leaveDuration = $('#ems_profile_leave_duration').val();
-        var leaveReason = $('#ems_profile_leave_reason_field').val();
-
         if (!leaveType || !startDate || !endDate || !leaveDuration || !leaveReason) {
             alert(ems_profile_leave_data.error_all_fields_required);
             return false;
         }
-        if (startDate < today) {
+        if (startDate < today) { // Should be caught by PHP and min attribute, but good to double check
             alert(ems_profile_leave_data.error_start_date_past);
+            $form.find('.ems-leave-start-date').val(today); // Correct it
+            validateProfileLeaveDates(); // Re-apply constraints
             return false;
         }
         if (endDate < startDate) {
             alert(ems_profile_leave_data.error_end_date_invalid);
+            $form.find('.ems-leave-end-date').val(startDate); // Correct it
+            validateProfileLeaveDates(); // Re-apply constraints
             return false;
         }
 
-        var formData = $(this).serialize(); // Collect form data
-        formData += '&action=' + ajax_action; // Add our AJAX action
-        formData += '&security=' + nonce;     // Add our nonce
+        var formData = $(this).serialize(); 
+        formData += '&action=' + ajax_action; 
+        formData += '&security=' + nonce;    
 
-        // Clear previous messages
-        $('#ems-profile-leave-form .notice').remove();
-        var $submitButton = $(this).find('input[type="submit"]');
+        $form.find('.notice').remove();
+        var $submitButton = $form.find('input[type="submit"]');
         var originalButtonText = $submitButton.val();
-        $submitButton.val('Submitting...').prop('disabled', true);
-
+        $submitButton.val(ems_profile_leave_data.submitting_text || 'Submitting...').prop('disabled', true); // Add submitting_text to localization
 
         $.ajax({
             url: ajax_url,
@@ -82,16 +124,14 @@ jQuery(document).ready(function($) {
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    $('#ems-profile-leave-form').prepend('<div class="notice notice-success is-dismissible"><p>' + response.data.message + '</p></div>');
-                    $('#ems-profile-leave-form')[0].reset(); // Reset the form
-                    // Optionally: Refresh the leave history list via another AJAX call or if response contains updated HTML
-                    // For now, just reset form and show message. User can refresh to see history.
+                    $form.prepend('<div class="notice notice-success is-dismissible"><p>' + response.data.message + '</p></div>');
+                    $form[0].reset(); 
                 } else {
-                    $('#ems-profile-leave-form').prepend('<div class="notice notice-error is-dismissible"><p>' + response.data.message + '</p></div>');
+                    $form.prepend('<div class="notice notice-error is-dismissible"><p>' + response.data.message + '</p></div>');
                 }
             },
             error: function() {
-                $('#ems-profile-leave-form').prepend('<div class="notice notice-error is-dismissible"><p>' + ems_profile_leave_data.error_message_general + '</p></div>');
+                $form.prepend('<div class="notice notice-error is-dismissible"><p>' + ems_profile_leave_data.error_message_general + '</p></div>');
             },
             complete: function() {
                  $submitButton.val(originalButtonText).prop('disabled', false);

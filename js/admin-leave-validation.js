@@ -1,105 +1,98 @@
 jQuery(document).ready(function($) {
+    var adminStartDateField = '#ems_leave_start_date'; // As defined in render_leave_request_details_meta_box
+    var adminEndDateField = '#ems_leave_end_date';     // As defined in render_leave_request_details_meta_box
+
     // Function to validate dates
-    function validateLeaveDates(startDateField, endDateField) {
-        var startDate = $(startDateField).val();
-        var endDate = $(endDateField).val();
-        var today = ems_leave_data.today; // Get today's date from localized script
-
-        // Set min attribute for start date to today if not already set by PHP (should be)
-        if (!$(startDateField).attr('min')) {
-            $(startDateField).attr('min', today);
-        }
-
-        // Set min attribute for end date to today or start date
-        if (startDate) {
-            $(endDateField).attr('min', startDate);
-             // If end date is already set and is before new start date, clear it or alert user
-            if (endDate && endDate < startDate) {
-                $(endDateField).val(''); // Clear it
-                // alert('End date cannot be earlier than the start date.'); // Optional: alert user
-            }
+    function validateLeaveDates() {
+        var startDate = $(adminStartDateField).val(); // Should be YYYY-MM-DD
+        var endDate = $(adminEndDateField).val();     // Should be YYYY-MM-DD
+        var today = '';
+        if (typeof ems_leave_admin_data !== 'undefined' && ems_leave_admin_data.today) {
+            today = ems_leave_admin_data.today;
         } else {
-             $(endDateField).attr('min', today); // If no start date, min is today
+            // Fallback if localization fails, though it shouldn't.
+            var d = new Date();
+            today = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+            // console.warn("EmManSys: ems_leave_admin_data.today not localized. Using client-generated date.");
         }
 
-        // Additional check: Start date cannot be in the past
+
+        // Set min attribute for start date to today
+        if (!$(adminStartDateField).attr('min') || $(adminStartDateField).attr('min') < today) {
+             $(adminStartDateField).attr('min', today);
+        }
+        // If jQuery UI Datepicker is attached to start date, update its minDate
+        if ($.fn.datepicker && $(adminStartDateField).hasClass('hasDatepicker')) {
+            try {
+                $(adminStartDateField).datepicker("option", "minDate", today);
+            } catch (e) { /* console.warn("Error setting minDate on admin start datepicker.", e); */ }
+        }
+        
+        // If start date is in the past, reset it
         if (startDate && startDate < today) {
-            // alert('Start date cannot be in the past.'); // Optional: alert user
-            $(startDateField).val(today); // Reset to today, or handle error differently
+            $(adminStartDateField).val(today);
+            startDate = today; // Update current value for immediate use
+        }
+        
+        // Set min attribute for end date based on start date or today
+        var minEndDate = startDate ? startDate : today;
+        $(adminEndDateField).attr('min', minEndDate);
+
+        // If jQuery UI Datepicker is attached to end date, update its minDate
+        if ($.fn.datepicker && $(adminEndDateField).hasClass('hasDatepicker')) {
+            try {
+                $(adminEndDateField).datepicker("option", "minDate", minEndDate);
+            } catch (e) { /* console.warn("Error setting minDate on admin end datepicker.", e); */ }
+        }
+
+        // If end date is already set and is before new start date (or today if start date is empty), reset it
+        if (endDate && endDate < minEndDate) {
+            $(adminEndDateField).val(minEndDate); // Or $(adminEndDateField).val('');
         }
     }
 
-    // Apply to admin form (Leave Request CPT edit screen)
-    // Note: The IDs might be different if you changed them in render_leave_request_details_meta_box
-    var adminStartDate = '#ems_leave_start_date';
-    var adminEndDate = '#ems_leave_end_date';
+    if ($(adminStartDateField).length && $(adminEndDateField).length) {
+        validateLeaveDates(); // Initial validation
 
-    if ($(adminStartDate).length && $(adminEndDate).length) {
-        validateLeaveDates(adminStartDate, adminEndDate); // Initial validation
-
-        $(adminStartDate).on('change', function() {
-            validateLeaveDates(adminStartDate, adminEndDate);
+        $(adminStartDateField).on('change input', function() { // Use 'input' for immediate feedback
+            validateLeaveDates();
         });
-        $(adminEndDate).on('change', function() {
-             // Simple check: if end date is before start date after change
-            var startDateVal = $(adminStartDate).val();
+
+        $(adminEndDateField).on('change input', function() {
+            // Simple re-check: if end date is before start date after change
+            var startDateVal = $(adminStartDateField).val();
             var endDateVal = $(this).val();
             if (startDateVal && endDateVal && endDateVal < startDateVal) {
-                // alert('End date cannot be earlier than the start date.');
-                $(this).val(startDateVal); // Reset to start date, or clear
+                $(this).val(startDateVal); // Reset to start date
             }
         });
     }
 
-    // Apply to profile form
-    var profileStartDate = '#ems_profile_start_date';
-    var profileEndDate = '#ems_profile_end_date';
-
-    if ($(profileStartDate).length && $(profileEndDate).length) {
-        validateLeaveDates(profileStartDate, profileEndDate); // Initial validation
-
-        $(profileStartDate).on('change', function() {
-            validateLeaveDates(profileStartDate, profileEndDate);
-        });
-         $(profileEndDate).on('change', function() {
-            var startDateVal = $(profileStartDate).val();
-            var endDateVal = $(this).val();
-            if (startDateVal && endDateVal && endDateVal < startDateVal) {
-                // alert('End date cannot be earlier than the start date.');
-                $(this).val(startDateVal); 
-            }
-        });
-    }
-
-    // Prevent form submission if dates are invalid (optional, more robust client-side)
-    $('form').on('submit', function(e){
-        var startDateField, endDateField;
-        if ($(this).attr('id') === 'ems-profile-leave-form') { // Profile form
-            startDateField = profileStartDate;
-            endDateField = profileEndDate;
-        } else if ($(this).attr('id') === 'post' && $('body').hasClass('post-type-leave_request')) { // Admin CPT form
-             startDateField = adminStartDate;
-             endDateField = adminEndDate;
-        } else {
-            return; // Not our form
+    // Prevent form submission if dates are invalid (more robust client-side)
+    // This targets the main post form in admin for the 'leave_request' CPT
+    $('form#post').on('submit', function(e){
+        if (!$('body').hasClass('post-type-leave_request')) {
+            return; // Not our form CPT
         }
 
-        if ($(startDateField).length && $(endDateField).length) {
-            var startDate = $(startDateField).val();
-            var endDate = $(endDateField).val();
-            var today = ems_leave_data.today;
+        if ($(adminStartDateField).length && $(adminEndDateField).length) {
+            var startDate = $(adminStartDateField).val();
+            var endDate = $(adminEndDateField).val();
+            var today = (typeof ems_leave_admin_data !== 'undefined' && ems_leave_admin_data.today) ? ems_leave_admin_data.today : new Date().toISOString().split('T')[0];
+
 
             if (startDate && startDate < today) {
                 alert( (typeof wp !== 'undefined' && wp.i18n && wp.i18n.__) ? wp.i18n.__('Start date cannot be in the past.', 'emmansys') : 'Start date cannot be in the past.' );
                 e.preventDefault();
+                $(adminStartDateField).focus();
                 return false;
             }
             if (startDate && endDate && endDate < startDate) {
                  alert( (typeof wp !== 'undefined' && wp.i18n && wp.i18n.__) ? wp.i18n.__('End date cannot be earlier than the start date.', 'emmansys') : 'End date cannot be earlier than the start date.' );
                 e.preventDefault();
+                $(adminEndDateField).focus();
                 return false;
             }
         }
     });
-
 });
