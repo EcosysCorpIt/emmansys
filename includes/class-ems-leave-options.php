@@ -36,23 +36,7 @@ class EMS_Leave_Options {
             'vacation'    => array(
                 'label' => __( 'Vacation', 'emmansys' ),
                 'initial_balance' => 15 
-            ),
-            'sick'        => array(
-                'label' => __( 'Sick Leave', 'emmansys' ),
-                'initial_balance' => 10 
-            ),
-            'personal'    => array(
-                'label' => __( 'Personal Leave', 'emmansys' ),
-                'initial_balance' => 5 
-            ),
-            'unpaid'      => array(
-                'label' => __( 'Unpaid Leave', 'emmansys' ),
-                'initial_balance' => 0 
-            ),
-            'other'       => array(
-                'label' => __( 'Other', 'emmansys' ),
-                'initial_balance' => 0
-            ),
+            )
         );
         
         $custom_leave_types_option = self::get_custom_leave_types(); // Use helper to get raw custom types
