@@ -101,7 +101,7 @@ class EMS_Admin_Menus {
 
     /**
      * Render the content for the Manager Dashboard admin page.
-     * @since 1.2.2 (Modified 1.2.3 for clickable calendar events)
+     * @since 1.2.2 (Modified 1.2.3 for clickable calendar events, 1.2.4 for conditional edit link)
      */
     public function render_manager_dashboard_page() {
         if ( ! current_user_can( 'approve_leave_requests' ) ) {
@@ -111,7 +111,7 @@ class EMS_Admin_Menus {
         // Fetch stats
         $pending_leave_args = array(
             'post_type' => 'leave_request',
-            'post_status' => 'publish',
+            'post_status' => 'publish', // Assuming all valid leave requests are 'publish'
             'meta_query' => array(
                 array(
                     'key' => '_leave_status',
@@ -127,22 +127,15 @@ class EMS_Admin_Menus {
 
         $total_employees_count = wp_count_posts('employee')->publish;
 
-        // Fetch recent pending leave requests
-        $recent_pending_args = array(
+        // Fetch recent leave requests (not just pending, to show status)
+        $recent_leave_args = array(
             'post_type' => 'leave_request',
             'post_status' => 'publish',
-            'meta_query' => array(
-                array(
-                    'key' => '_leave_status',
-                    'value' => 'pending',
-                    'compare' => '='
-                )
-            ),
-            'posts_per_page' => 5,
+            'posts_per_page' => 5, // Show 5 most recent requests regardless of status for this table
             'orderby' => 'date',
             'order' => 'DESC'
         );
-        $recent_pending_requests = get_posts( $recent_pending_args );
+        $recent_leave_requests = get_posts( $recent_leave_args );
 
         // Fetch approved leave requests for the calendar
         $approved_leave_events = array();
@@ -156,7 +149,7 @@ class EMS_Admin_Menus {
                     'compare' => '='
                 )
             ),
-            'posts_per_page' => -1, // Get all approved
+            'posts_per_page' => -1, 
         );
         $approved_requests = get_posts( $approved_leave_args );
 
@@ -167,13 +160,12 @@ class EMS_Admin_Menus {
             $edit_link = get_edit_post_link( $request->ID );
 
             if ( $employee_name && $start_date && $end_date && $edit_link ) {
-                // FullCalendar's end date is exclusive. Add one day.
                 $end_date_for_calendar = date('Y-m-d', strtotime($end_date . ' +1 day'));
                 $approved_leave_events[] = array(
                     'title' => esc_js( $employee_name . ' (On Leave)' ),
                     'start' => esc_js( $start_date ),
                     'end'   => esc_js( $end_date_for_calendar ),
-                    'url'   => esc_url( $edit_link ), // Make event clickable
+                    'url'   => esc_url( $edit_link ), 
                     'allDay' => true 
                 );
             }
@@ -212,39 +204,50 @@ class EMS_Admin_Menus {
                     <div id="postbox-container-2" class="postbox-container">
                         <div class="meta-box-sortables">
                             <div class="postbox">
-                                <h2 class="hndle"><span><?php esc_html_e( 'Recent Pending Leave Requests', 'emmansys' ); ?></span></h2>
+                                <h2 class="hndle"><span><?php esc_html_e( 'Recent Leave Requests', 'emmansys' ); ?></span></h2>
                                 <div class="inside">
-                                    <?php if ( ! empty( $recent_pending_requests ) ) : ?>
+                                    <?php if ( ! empty( $recent_leave_requests ) ) : ?>
                                         <table class="wp-list-table widefat fixed striped">
                                             <thead>
                                                 <tr>
                                                     <th><?php esc_html_e( 'Employee', 'emmansys' ); ?></th>
                                                     <th><?php esc_html_e( 'Leave Type', 'emmansys' ); ?></th>
                                                     <th><?php esc_html_e( 'Dates', 'emmansys' ); ?></th>
+                                                    <th><?php esc_html_e( 'Status', 'emmansys' ); ?></th>
                                                     <th><?php esc_html_e( 'Action', 'emmansys' ); ?></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <?php 
                                                 $all_leave_types_map = EMS_Leave_Options::get_leave_types();
-                                                foreach ( $recent_pending_requests as $request ) : 
+                                                $statuses_map = EMS_Leave_Options::get_leave_statuses();
+                                                foreach ( $recent_leave_requests as $request ) : 
                                                     $employee_name = get_post_meta( $request->ID, '_leave_employee_name', true );
                                                     $leave_type_key = get_post_meta( $request->ID, '_leave_type', true );
                                                     $leave_type_label = isset($all_leave_types_map[$leave_type_key]['label']) ? $all_leave_types_map[$leave_type_key]['label'] : $leave_type_key;
                                                     $start_date = get_post_meta( $request->ID, '_leave_start_date', true );
                                                     $end_date = get_post_meta( $request->ID, '_leave_end_date', true );
+                                                    $current_status_key = get_post_meta( $request->ID, '_leave_status', true );
+                                                    $current_status_label = isset($statuses_map[$current_status_key]) ? $statuses_map[$current_status_key] : ucfirst($current_status_key);
                                                 ?>
                                                     <tr>
                                                         <td><?php echo esc_html( $employee_name ); ?></td>
                                                         <td><?php echo esc_html( $leave_type_label ); ?></td>
                                                         <td><?php echo esc_html( $start_date ) . ' - ' . esc_html( $end_date ); ?></td>
-                                                        <td><a href="<?php echo esc_url( get_edit_post_link( $request->ID ) ); ?>"><?php esc_html_e( 'View/Edit', 'emmansys' ); ?></a></td>
+                                                        <td><?php echo esc_html( $current_status_label ); ?></td>
+                                                        <td>
+                                                            <?php if ( $current_status_key === 'pending' || $current_status_key === 'draft' ) : // Only show edit for pending or draft ?>
+                                                                <a href="<?php echo esc_url( get_edit_post_link( $request->ID ) ); ?>"><?php esc_html_e( 'View/Edit', 'emmansys' ); ?></a>
+                                                            <?php else: ?>
+                                                                <a href="<?php echo esc_url( get_edit_post_link( $request->ID ) ); ?>"><?php esc_html_e( 'View', 'emmansys' ); ?></a>
+                                                            <?php endif; ?>
+                                                        </td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
                                     <?php else : ?>
-                                        <p><?php esc_html_e( 'No pending leave requests found.', 'emmansys' ); ?></p>
+                                        <p><?php esc_html_e( 'No recent leave requests found.', 'emmansys' ); ?></p>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -269,7 +272,7 @@ class EMS_Admin_Menus {
             .ems-manager-dashboard .postbox .inside ul { margin-top: 0; }
             .ems-manager-dashboard .postbox .inside ul li { margin-bottom: 0.5em; }
             #ems-leave-calendar { max-width: 100%; margin: 0 auto; }
-            .fc-event { cursor: pointer; } /* Add pointer cursor to events */
+            .fc-event { cursor: pointer; } 
             @media screen and (max-width: 782px) {
                 .ems-manager-dashboard .postbox-container { width: 100%; margin-right: 0; float: none; }
             }
@@ -286,14 +289,6 @@ class EMS_Admin_Menus {
                             right: 'dayGridMonth,timeGridWeek,listWeek'
                         },
                         events: <?php echo wp_json_encode( $approved_leave_events ); ?>,
-                        // eventClick is handled by the 'url' property in events by default
-                        // For more custom behavior:
-                        // eventClick: function(info) {
-                        //    info.jsEvent.preventDefault(); // prevent browser navigate
-                        //    if (info.event.url) {
-                        //      window.location.href = info.event.url;
-                        //    }
-                        // }
                     });
                     calendar.render();
                 }
