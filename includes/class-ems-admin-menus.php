@@ -69,6 +69,15 @@ class EMS_Admin_Menus {
     }
 
     /**
+     * Removes the default "Add New" submenu page for the Leave Request CPT.
+     * This is done because the plugin uses a custom "Add New Leave" page.
+     * @since 1.2.1
+     */
+    public function remove_default_add_new_submenu() {
+        remove_submenu_page( 'edit.php?post_type=leave_request', 'post-new.php?post_type=leave_request' );
+    }
+
+    /**
      * Render the content for the Employee Dashboard admin page.
      */
     public function render_employee_dashboard_page() {

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EmManSys
  * Description:       A simple plugin to create, edit, delete, and list employees and manage leave requests. Requires User Role Editor plugin.
- * Version:           1.2.0
+ * Version:           1.2.1
  * Author:            Your Name
  * Author URI:        https://example.com/
  * License:           GPL v2 or later
@@ -26,7 +26,7 @@ final class Employee_Management_System {
      *
      * @var string
      */
-    const VERSION = '1.2.0'; // Updated version for refactoring
+    const VERSION = '1.2.1'; // Updated version
 
     /**
      * The single instance of the class.
@@ -170,26 +170,19 @@ final class Employee_Management_System {
      * Initialize the plugin if dependencies are met.
      */
     public function init_plugin_if_dependency_met() {
-        // Check dependencies early
         add_action( 'admin_init', array( $this, 'check_dependencies_and_notify' ) );
-        // We need to run the check_dependencies_and_notify at least once to set $this->dependency_met
-        // For non-admin pages, or if admin_init hasn't run yet, we might need an earlier check or assume dependency met.
-        // However, for simplicity, we'll rely on admin_init for the notice.
-        // The functional parts of the plugin will only load if the dependency is truly met.
 
         if ( ! function_exists( 'is_plugin_active' ) ) {
             include_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
         if ( is_plugin_active( 'user-role-editor/user-role-editor.php' ) ) {
-            $this->dependency_met = true; // Set it explicitly here too
+            $this->dependency_met = true; 
             $this->includes();
             $this->setup_handlers();
             $this->init_hooks();
         } else {
-            // If dependency not met, we still need admin_init to hook the notice.
-            // The plugin won't fully initialize.
-            $this->dependency_met = false; // Ensure it's false
+            $this->dependency_met = false; 
         }
     }
 
@@ -203,7 +196,8 @@ final class Employee_Management_System {
 
         // Admin Menu & Pages
         add_action( 'admin_menu', array( $this->admin_menus, 'add_admin_menus' ) );
-        add_action( 'admin_head', array( $this->admin_menus, 'hide_leave_request_add_new_button_css' ) ); // Moved from main class
+        add_action( 'admin_head', array( $this->admin_menus, 'hide_leave_request_add_new_button_css' ) ); 
+        add_action( 'admin_menu', array( $this->admin_menus, 'remove_default_add_new_submenu' ), 999 ); // Remove default "Add New" submenu
 
         // CPT Registration and Management
         add_action( 'init', array( $this->employee_cpt, 'register_employee_cpt' ) );
@@ -237,7 +231,7 @@ final class Employee_Management_System {
         add_action( 'wp_ajax_ems_change_leave_status', array( $this->ajax_handlers, 'ajax_ems_change_leave_status' ) );
         
         // Admin Notices
-        add_action( 'admin_notices', array( $this->admin_menus, 'show_general_admin_notices' ) ); // Moved to admin_menus for consistency
+        add_action( 'admin_notices', array( $this->admin_menus, 'show_general_admin_notices' ) ); 
 
         // Assets
         add_action( 'admin_enqueue_scripts', array( $this->assets, 'enqueue_admin_scripts' ) );
@@ -247,7 +241,6 @@ final class Employee_Management_System {
      * Plugin activation.
      */
     public function activate() {
-        // Ensure handlers are available for CPT registration
         if (!isset($this->employee_cpt)) {
             require_once EMS_PLUGIN_DIR . 'includes/class-ems-cpt-employee.php';
             $this->employee_cpt = new EMS_Employee_CPT();
@@ -261,7 +254,6 @@ final class Employee_Management_System {
         $this->leave_request_cpt->register_leave_request_cpt();
         flush_rewrite_rules();
 
-        // Create dummy JS files if they don't exist (idempotent)
         $js_dir = EMS_PLUGIN_DIR . 'js/';
         if (!is_dir($js_dir)) {
             wp_mkdir_p($js_dir);
@@ -303,19 +295,16 @@ run_employee_management_system();
  * =====================================================================================
  * UPDATE HISTORY:
  * =====================================================================================
- * Version 1.2.0 (Current - Major Refactor)
+ * Version 1.2.1 (Current - Remove Default "Add New" Submenu for Leave Requests)
+ * - Added `remove_default_add_new_submenu` method to `EMS_Admin_Menus` class.
+ * - This method uses `remove_submenu_page()` to hide the default "Add New" submenu item
+ * for the "Leave Request" CPT, as the plugin uses a custom page for this.
+ * - Hooked this new method to `admin_menu` with a late priority (999) in `emmansys.php`.
+ * - Incremented plugin version to 1.2.1.
+ *
+ * Version 1.2.0 
  * - Refactored the main plugin class `Employee_Management_System` into multiple smaller classes
- * for better organization and maintainability. New classes include:
- * - EMS_Assets: Handles script and style enqueueing.
- * - EMS_Admin_Menus: Manages admin menu creation and page rendering.
- * - EMS_Employee_CPT: Manages the "Employee" Custom Post Type.
- * - EMS_Leave_Request_CPT: Manages the "Leave Request" Custom Post Type and related logic.
- * - EMS_Form_Handlers: Handles admin-post.php form submissions.
- * - EMS_AJAX_Handlers: Handles AJAX requests.
- * - EMS_User_Profile: Manages leave display on user profiles.
- * - The main `emmansys.php` file now primarily initializes these handlers and hooks.
- * - Helper methods related to leave requests (ID generation, overlap check, balance updates)
- * have been moved into the `EMS_Leave_Request_CPT` class.
+ * for better organization and maintainability.
  * - Incremented plugin version to 1.2.0.
  *
  * (Older versions summarized for brevity)
