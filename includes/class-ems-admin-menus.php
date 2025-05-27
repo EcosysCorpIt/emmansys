@@ -43,7 +43,7 @@ class EMS_Admin_Menus {
         $this->plugin->employee_dashboard_page_hook_suffix = add_menu_page(
             __( 'My Dashboard', 'emmansys' ),
             __( 'My Dashboard', 'emmansys' ),
-            'submit_profile_leave_request', // Capability for employees
+            'submit_profile_leave_request', 
             'ems-employee-dashboard',
             array( $this, 'render_employee_dashboard_page' ),
             'dashicons-id-alt',
@@ -51,15 +51,15 @@ class EMS_Admin_Menus {
         );
 
         // Manager Dashboard (for admins/managers)
-        if ( current_user_can( 'approve_leave_requests' ) ) { // Capability for managers
+        if ( current_user_can( 'approve_leave_requests' ) ) { 
             $this->plugin->manager_dashboard_page_hook_suffix = add_menu_page(
                 __( 'Manager Dashboard', 'emmansys' ),
                 __( 'Manager Dashboard', 'emmansys' ),
                 'approve_leave_requests',
                 'ems-manager-dashboard',
                 array( $this, 'render_manager_dashboard_page' ),
-                'dashicons-dashboard', // A different icon
-                25 // Positioned higher than "My Dashboard"
+                'dashicons-dashboard', 
+                25 
             );
         }
 
@@ -77,7 +77,7 @@ class EMS_Admin_Menus {
             'edit.php?post_type=leave_request',
             __( 'Manage Leave Types', 'emmansys' ),
             __( 'Leave Types', 'emmansys' ),
-            'manage_options', // Typically admin-only
+            'manage_options', 
             'ems-leave-types',
             array( $this, 'render_leave_types_admin_page' )
         );
@@ -95,7 +95,6 @@ class EMS_Admin_Menus {
      * Render the content for the Employee Dashboard admin page.
      */
     public function render_employee_dashboard_page() {
-        // ... (content remains the same as in version 1.2.1) ...
         if ( !current_user_can('submit_profile_leave_request') ) { wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'emmansys' ) ); } $user_for_dashboard = wp_get_current_user(); if ( ! ($user_for_dashboard instanceof WP_User) || ! $user_for_dashboard->ID ) { echo '<div class="wrap"><p>' . esc_html__('Error: Could not retrieve current user information. Please try logging in again.', 'emmansys') . '</p></div>'; return; } ?> <div class="wrap ems-dashboard"> <h1><?php esc_html_e( 'Employee Dashboard', 'emmansys' ); ?></h1> <?php $this->user_profile_handler->show_leave_management_on_profile( $user_for_dashboard, true ); ?> </div> <style> .ems-dashboard .form-table { margin-bottom: 20px; } .ems-dashboard .notice { margin-top: 15px; margin-bottom: 15px; } </style> <?php
     }
 
@@ -119,8 +118,8 @@ class EMS_Admin_Menus {
                     'compare' => '='
                 )
             ),
-            'posts_per_page' => -1, // Count all
-            'fields' => 'ids' // Optimize query
+            'posts_per_page' => -1, 
+            'fields' => 'ids' 
         );
         $pending_leave_query = new WP_Query( $pending_leave_args );
         $pending_leave_count = $pending_leave_query->post_count;
@@ -143,6 +142,40 @@ class EMS_Admin_Menus {
             'order' => 'DESC'
         );
         $recent_pending_requests = get_posts( $recent_pending_args );
+
+        // Fetch approved leave requests for the calendar
+        $approved_leave_events = array();
+        $approved_leave_args = array(
+            'post_type' => 'leave_request',
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array(
+                    'key' => '_leave_status',
+                    'value' => 'approved',
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => -1, // Get all approved
+        );
+        $approved_requests = get_posts( $approved_leave_args );
+
+        foreach ( $approved_requests as $request ) {
+            $employee_name = get_post_meta( $request->ID, '_leave_employee_name', true );
+            $start_date = get_post_meta( $request->ID, '_leave_start_date', true );
+            $end_date = get_post_meta( $request->ID, '_leave_end_date', true );
+
+            if ( $employee_name && $start_date && $end_date ) {
+                // FullCalendar's end date is exclusive. Add one day.
+                $end_date_for_calendar = date('Y-m-d', strtotime($end_date . ' +1 day'));
+                $approved_leave_events[] = array(
+                    'title' => esc_js( $employee_name . ' (On Leave)' ),
+                    'start' => esc_js( $start_date ),
+                    'end'   => esc_js( $end_date_for_calendar ),
+                    'allDay' => true // Assuming all leaves are full day events for simplicity on calendar
+                );
+            }
+        }
+        wp_reset_postdata();
 
         ?>
         <div class="wrap ems-manager-dashboard">
@@ -214,18 +247,50 @@ class EMS_Admin_Menus {
                             </div>
                         </div>
                     </div>
+                     <div id="postbox-container-3" class="postbox-container" style="width: 99%; margin-top: 20px;"> <div class="meta-box-sortables">
+                            <div class="postbox">
+                                <h2 class="hndle"><span><?php esc_html_e( 'Leave Calendar', 'emmansys' ); ?></span></h2>
+                                <div class="inside">
+                                    <div id="ems-leave-calendar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <style>
-            .ems-manager-dashboard .postbox-container { width: 49%; margin-right: 1%; float: left; }
+            .ems-manager-dashboard .postbox-container { width: 49%; margin-right: 1%; float: left; margin-bottom: 20px; }
             .ems-manager-dashboard #postbox-container-2 { margin-right: 0; }
+            .ems-manager-dashboard #postbox-container-3 { width: 98%; float:none; clear:both; } /* Full width for calendar */
             .ems-manager-dashboard .postbox .inside ul { margin-top: 0; }
             .ems-manager-dashboard .postbox .inside ul li { margin-bottom: 0.5em; }
+            #ems-leave-calendar { max-width: 100%; margin: 0 auto; }
             @media screen and (max-width: 782px) {
                 .ems-manager-dashboard .postbox-container { width: 100%; margin-right: 0; float: none; }
             }
         </style>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var calendarEl = document.getElementById('ems-leave-calendar');
+                if (calendarEl) {
+                    var calendar = new FullCalendar.Calendar(calendarEl, {
+                        initialView: 'dayGridMonth',
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,listWeek'
+                        },
+                        events: <?php echo wp_json_encode( $approved_leave_events ); ?>,
+                        eventDidMount: function(info) {
+                            // You can add tooltips or other interactions here if needed
+                            // Example: info.el.title = info.event.title;
+                        }
+                    });
+                    calendar.render();
+                }
+            });
+        </script>
         <?php
     }
 
@@ -269,8 +334,6 @@ class EMS_Admin_Menus {
         if ( $errors = get_transient( 'settings_errors' ) ) { 
             settings_errors( 'ems_leave_types_notices', false, true ); 
             settings_errors( 'ems_leave_notice', false, true ); 
-            // Note: 'ems_add_leave_notice' is handled directly in its render page for overlap,
-            // but other errors from that group might also be caught by 'ems_leave_notice' if not specific.
             delete_transient( 'settings_errors' ); 
         } 
         if ( $message = get_transient( 'ems_leave_notice_success' ) ) { 
@@ -281,6 +344,5 @@ class EMS_Admin_Menus {
             echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $message ) . '</p></div>'; 
             delete_transient( 'ems_leave_notice_error' ); 
         }
-        // Specific overlap error for admin add new leave page is handled in render_add_new_leave_request_page
     }
 }

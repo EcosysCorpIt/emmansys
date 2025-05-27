@@ -49,7 +49,7 @@ class EMS_Assets {
         } 
 
         // Validation script for User Profile page and Employee Dashboard
-        if ( 'profile.php' === $hook_suffix || 'user-edit.php' === $hook_suffix || $hook_suffix === $this->plugin->dashboard_page_hook_suffix ) {
+        if ( 'profile.php' === $hook_suffix || 'user-edit.php' === $hook_suffix || $hook_suffix === $this->plugin->employee_dashboard_page_hook_suffix ) { // Corrected property name
             wp_enqueue_script( 'ems-profile-leave-validation', $plugin_url . 'js/profile-leave-validation.js', array( 'jquery' ), $plugin_version, true );
             wp_localize_script('ems-profile-leave-validation', 'ems_profile_leave_data', array( 
                 'today' => current_time('Y-m-d'),
@@ -90,6 +90,14 @@ class EMS_Assets {
                     'error_generic' => __('An error occurred. Please try again.', 'emmansys'),
                 )
             );
+        }
+
+        // Enqueue FullCalendar for Manager Dashboard
+        if ( $hook_suffix === $this->plugin->manager_dashboard_page_hook_suffix ) {
+            wp_enqueue_style( 'fullcalendar-css', 'https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css', array(), '5.11.3' );
+            wp_enqueue_script( 'fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js', array(), '5.11.3', true );
+            // Example: If you need specific plugins like dayGrid
+            // wp_enqueue_script( 'fullcalendar-daygrid', 'https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/daygrid/main.global.min.js', array('fullcalendar-js'), '5.11.3', true );
         }
     }
 }
