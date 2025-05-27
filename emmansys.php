@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EmManSys
  * Description:       A simple plugin to create, edit, delete, and list employees and manage leave requests. Requires User Role Editor plugin.
- * Version:           1.2.4
+ * Version:           1.2.5
  * Author:            Your Name
  * Author URI:        https://example.com/
  * License:           GPL v2 or later
@@ -26,7 +26,7 @@ final class Employee_Management_System {
      *
      * @var string
      */
-    const VERSION = '1.2.4'; // Updated version
+    const VERSION = '1.2.5'; // Updated version
 
     /**
      * The single instance of the class.
@@ -165,7 +165,7 @@ final class Employee_Management_System {
         $this->user_profile      = new EMS_User_Profile();
         $this->admin_menus       = new EMS_Admin_Menus($this, $this->user_profile);
         $this->employee_cpt      = new EMS_Employee_CPT();
-        $this->leave_request_cpt = new EMS_Leave_Request_CPT(); // This will now add the filter in its constructor
+        $this->leave_request_cpt = new EMS_Leave_Request_CPT(); 
         $this->form_handlers     = new EMS_Form_Handlers($this->leave_request_cpt);
         $this->ajax_handlers     = new EMS_AJAX_Handlers($this->leave_request_cpt);
     }
@@ -221,8 +221,7 @@ final class Employee_Management_System {
         add_action( 'manage_leave_request_posts_custom_column', array( $this->leave_request_cpt, 'render_leave_request_columns' ), 10, 2 );
         add_filter( 'manage_edit-leave_request_sortable_columns', array( $this->leave_request_cpt, 'make_leave_request_columns_sortable' ) );
         add_action( 'pre_get_posts', array( $this->leave_request_cpt, 'sort_leave_request_columns_query' ) );
-        // The 'post_row_actions' filter is now added in EMS_Leave_Request_CPT constructor
-
+        
         // User Profile Integration
         add_action( 'show_user_profile', array( $this->user_profile, 'show_leave_management_on_profile' ) );
         add_action( 'edit_user_profile', array( $this->user_profile, 'show_leave_management_on_profile' ) );
@@ -301,19 +300,20 @@ run_employee_management_system();
  * =====================================================================================
  * UPDATE HISTORY:
  * =====================================================================================
- * Version 1.2.4 (Current - Remove Edit/Quick Edit for Approved/Rejected Leaves in List Table)
+ * Version 1.2.5 (Current - Conditional Actions Column in Leave List)
+ * - Modified `EMS_Leave_Request_CPT::render_leave_request_columns`:
+ * - The "Actions" column (with status dropdown and Update button) will now only be displayed
+ * if the leave request status is NOT 'approved', 'rejected', or 'cancelled'.
+ * - For 'approved', 'rejected', or 'cancelled' statuses, it will display "No actions available."
+ * - The `filter_leave_request_row_actions` method continues to remove "Edit" and "Quick Edit"
+ * for these statuses.
+ * - Incremented plugin version to 1.2.5.
+ * * Version 1.2.4
  * - Added `filter_leave_request_row_actions` method to `EMS_Leave_Request_CPT`.
  * - This method hooks into `post_row_actions` to remove the "Edit" and "Quick Edit" links
  * for leave requests that have a status of 'approved', 'rejected', or 'cancelled'.
  * - The filter is added in the constructor of `EMS_Leave_Request_CPT`.
  * - Incremented plugin version to 1.2.4.
- * * Version 1.2.3
- * - Modified `EMS_Admin_Menus::render_manager_dashboard_page`:
- * - Added `url` property to each event object for FullCalendar, linking to the
- * edit page of the respective leave request (`get_edit_post_link()`).
- * - FullCalendar will now navigate to this URL when an event is clicked.
- * - Added `cursor: pointer` CSS for calendar events.
- * - Incremented plugin version to 1.2.3.
  *
  * (Older versions summarized for brevity)
  * =====================================================================================
