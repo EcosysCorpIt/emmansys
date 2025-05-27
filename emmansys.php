@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EmManSys
  * Description:       A simple plugin to create, edit, delete, and list employees and manage leave requests. Requires User Role Editor plugin.
- * Version:           1.2.2 
+ * Version:           1.2.3
  * Author:            Your Name
  * Author URI:        https://example.com/
  * License:           GPL v2 or later
@@ -26,7 +26,7 @@ final class Employee_Management_System {
      *
      * @var string
      */
-    const VERSION = '1.2.2'; // Updated version
+    const VERSION = '1.2.3'; // Updated version
 
     /**
      * The single instance of the class.
@@ -45,13 +45,13 @@ final class Employee_Management_System {
      * Hook suffix for the employee dashboard page.
      * @var string
      */
-    public $employee_dashboard_page_hook_suffix = ''; // Changed from dashboard_page_hook_suffix
+    public $employee_dashboard_page_hook_suffix = '';
 
     /**
      * Hook suffix for the manager dashboard page.
      * @var string
      */
-    public $manager_dashboard_page_hook_suffix = ''; // New property for manager dashboard
+    public $manager_dashboard_page_hook_suffix = ''; 
 
     /**
      * Hook suffix for the leave types page.
@@ -300,7 +300,14 @@ run_employee_management_system();
  * =====================================================================================
  * UPDATE HISTORY:
  * =====================================================================================
- * Version 1.2.2 (Current - Add Manager Dashboard with Calendar)
+ * Version 1.2.3 (Current - Clickable Calendar Events)
+ * - Modified `EMS_Admin_Menus::render_manager_dashboard_page`:
+ * - Added `url` property to each event object for FullCalendar, linking to the
+ * edit page of the respective leave request (`get_edit_post_link()`).
+ * - FullCalendar will now navigate to this URL when an event is clicked.
+ * - Added `cursor: pointer` CSS for calendar events.
+ * - Incremented plugin version to 1.2.3.
+ * * Version 1.2.2
  * - Added `manager_dashboard_page_hook_suffix` property to the main plugin class.
  * - Modified `EMS_Admin_Menus` class:
  * - `add_admin_menus` now includes logic to add a top-level "Manager Dashboard" if the user
@@ -311,13 +318,6 @@ run_employee_management_system();
  * - `enqueue_admin_scripts` now enqueues FullCalendar CSS and JS on the Manager Dashboard page.
  * - The Manager Dashboard now fetches approved leave requests and displays them on a FullCalendar instance.
  * - Incremented plugin version to 1.2.2.
- *
- * Version 1.2.1
- * - Added `remove_default_add_new_submenu` method to `EMS_Admin_Menus` class.
- * - This method uses `remove_submenu_page()` to hide the default "Add New" submenu item
- * for the "Leave Request" CPT, as the plugin uses a custom page for this.
- * - Hooked this new method to `admin_menu` with a late priority (999) in `emmansys.php`.
- * - Incremented plugin version to 1.2.1.
  *
  * (Older versions summarized for brevity)
  * =====================================================================================
